@@ -36,10 +36,24 @@ def enum_label_name(field, value):
     return field.enum_type.values_by_number[int(value)].name
 
 
-def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False):
+def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, unfilled_fields=True):
     result_dict = {}
     extensions = {}
-    for field, value in pb.ListFields():
+
+    field_list = pb.ListFields()
+
+    if unfilled_fields:
+        # create a list of tuples with all fields and default values
+        schema_fields = []
+        for schema_field in pb.DESCRIPTOR.fields:
+            schema_fields.append((schema_field, schema_field.default_value))
+
+        # get the filled field ids for deduping
+        filled_field_names = map(lambda x:x[0].name, field_list)
+        unfilled_fields_to_join = filter(lambda x: (x[0].name not in filled_field_names), schema_fields)
+        field_list = field_list + unfilled_fields_to_join
+
+    for field, value in field_list:
         type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels)
         if field.label == FieldDescriptor.LABEL_REPEATED:
             type_callable = repeated(type_callable)
