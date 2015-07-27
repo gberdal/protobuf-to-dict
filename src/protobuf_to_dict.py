@@ -36,9 +36,12 @@ def enum_label_name(field, value):
     return field.enum_type.values_by_number[int(value)].name
 
 
-def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, unfilled_fields=True):
+def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, unfilled_fields=False):
     result_dict = {}
     extensions = {}
+
+    if pb is None:
+        return result_dict
 
     field_list = pb.ListFields()
 
@@ -54,7 +57,7 @@ def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=Fa
         field_list = field_list + unfilled_fields_to_join
 
     for field, value in field_list:
-        type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels)
+        type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels, unfilled_fields)
         if field.label == FieldDescriptor.LABEL_REPEATED:
             type_callable = repeated(type_callable)
 
@@ -68,13 +71,13 @@ def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=Fa
         result_dict[EXTENSION_CONTAINER] = extensions
     return result_dict
 
-
-def _get_field_value_adaptor(pb, field, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False):
+def _get_field_value_adaptor(pb, field, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=False, unfilled_fields=False):
     if field.type == FieldDescriptor.TYPE_MESSAGE:
         # recursively encode protobuf sub-message
         return lambda pb: protobuf_to_dict(pb,
             type_callable_map=type_callable_map,
-            use_enum_labels=use_enum_labels)
+            use_enum_labels=use_enum_labels,
+            unfilled_fields=unfilled_fields)
 
     if use_enum_labels and field.type == FieldDescriptor.TYPE_ENUM:
         return lambda value: enum_label_name(field, value)
