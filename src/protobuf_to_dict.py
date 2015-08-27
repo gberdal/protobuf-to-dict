@@ -1,6 +1,6 @@
 from google.protobuf.message import Message
 from google.protobuf.descriptor import FieldDescriptor
-
+from google.protobuf.internal.containers import ScalarMap
 
 __all__ = ["protobuf_to_dict", "TYPE_CALLABLE_MAP", "dict_to_protobuf", "REVERSE_TYPE_CALLABLE_MAP"]
 
@@ -40,6 +40,7 @@ def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=Fa
     result_dict = {}
     extensions = {}
 
+    primitives = (unicode)
     if pb is None:
         return result_dict
 
@@ -57,6 +58,10 @@ def protobuf_to_dict(pb, type_callable_map=TYPE_CALLABLE_MAP, use_enum_labels=Fa
         field_list = field_list + unfilled_fields_to_join
 
     for field, value in field_list:
+        if isinstance(value, ScalarMap):
+            result_dict[field.name] = value._values
+            return result_dict
+
         type_callable = _get_field_value_adaptor(pb, field, type_callable_map, use_enum_labels, unfilled_fields)
         if field.label == FieldDescriptor.LABEL_REPEATED:
             type_callable = repeated(type_callable)
